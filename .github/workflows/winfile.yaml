@@ -1,0 +1,57 @@
+name: Test WinFile.exe
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.18'  # Specify the Go version used for compiling your project
+
+    - name: Download winfile.exe
+      run: |
+        Invoke-WebRequest -Uri https://github.com/windowsislovewindowsislife/winfile/raw/9180fb36498d823d8368b9c26b7e0fb257a31574/winfile.exe -OutFile $env:USERPROFILE\winfile.exe
+
+    - name: Run winfile.exe
+      run: |
+        Start-Process -FilePath "$env:USERPROFILE\winfile.exe" -ArgumentList "createfile test.txt" -Wait
+        Start-Process -FilePath "$env:USERPROFILE\winfile.exe" -ArgumentList "appendtofile test.txt 'Hello, World!'" -Wait
+        Start-Process -FilePath "$env:USERPROFILE\winfile.exe" -ArgumentList "viewfile test.txt" -Wait
+        Start-Process -FilePath "$env:USERPROFILE\winfile.exe" -ArgumentList "deletefile test.txt" -Wait
+
+    - name: Verify file creation and modification
+      run: |
+        # Check that file exists
+        if (Test-Path "$env:USERPROFILE\test.txt") {
+          Write-Host "File creation test passed"
+        } else {
+          Write-Host "File creation test failed"
+          exit 1
+        }
+        
+        # Check that file contains the appended text
+        $content = Get-Content "$env:USERPROFILE\test.txt"
+        if ($content -contains 'Hello, World!') {
+          Write-Host "File append test passed"
+        } else {
+          Write-Host "File append test failed"
+          exit 1
+        }
+
+    - name: Clean up
+      run: |
+        # Ensure the file is deleted
+        Remove-Item "$env:USERPROFILE\test.txt" -Force -ErrorAction SilentlyContinue
